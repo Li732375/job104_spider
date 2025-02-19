@@ -1,9 +1,49 @@
 import time
 import random
 import requests
+import sys
+sys.stdout.reconfigure(encoding='utf-8')
 
 
 class Job104Spider():
+    def search(self, max_mun=10): # 這裡的 max_mun 是指要找前幾頁的職缺
+        """搜尋職缺"""
+        jobs = []
+        total_count = 0
+
+        url = 'https://www.104.com.tw/jobs/search/api/jobs?'
+        query = f'jobsource=joblist_search&mode=s'
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+            'Refreer': 'strict-origin-when-cross-origin',
+        }
+
+        page = 1
+        pagesize = 20
+        while len(jobs) < max_mun:
+            params = f'{query}&page={page}&pagesize={pagesize}'
+            r = requests.get(url, params=params, headers=headers)
+            if r.status_code != requests.codes.ok:
+                print('請求失敗', r.status_code)
+                data = r.json()
+                break
+
+            data = r.json()
+            total_count = data['metadata']['pagination']['total']
+
+            # 將每一頁的職缺資料加入 jobs
+            jobs.extend(data['data'][str(num)] for num in range(len(data["data"])))
+            
+            # 如果是最後一頁，就跳出迴圈
+            if (page == data['metadata']['pagination']['lastPage']) or (data['metadata']['pagination']['lastPage'] == 0):
+                break
+            # 如果不是最後一頁，就繼續下一頁
+            page += 1
+            # 隨機等待 3~5 秒
+            time.sleep(random.uniform(3, 5))
+
+        return total_count, jobs[:max_mun]
+
     def search(self, keyword, max_mun=10, filter_params=None, sort_type='符合度', is_sort_asc=False):
         """搜尋職缺"""
         jobs = []
